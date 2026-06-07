@@ -346,16 +346,16 @@ export default function InvoicePreview({ data, settings, previewRef }) {
         </div>
       </div>
 
-      {/* Transparent Company Seal Image overlay */}
+      {/* Transparent Company Seal Image overlay (perfectly centered on pre-printed seal, bottom address removed) */}
       <img
         src="/seal.png"
         alt="Company Seal"
         style={{
           position: 'absolute',
-          left: '72.57mm',
-          top: '232.05mm',
-          width: '51.96mm',
-          height: '46.58mm',
+          left: '87.21mm',
+          top: '240.43mm',
+          width: '30.63mm',
+          height: '30.91mm',
           zIndex: 15,
           pointerEvents: 'none',
         }}
