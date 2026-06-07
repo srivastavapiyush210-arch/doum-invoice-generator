@@ -68,7 +68,7 @@ export default function InvoicePreview({ data, settings, previewRef }) {
       id="invoice-preview"
       style={{
         width: '210mm',
-        height: '297mm',
+        height: '296mm',
         backgroundColor: '#ffffff',
         position: 'relative',
         boxSizing: 'border-box',
@@ -85,7 +85,7 @@ export default function InvoicePreview({ data, settings, previewRef }) {
         alt="Invoice Template Background"
         style={{
           width: '210mm',
-          height: '297mm',
+          height: '296mm',
           display: 'block',
           position: 'absolute',
           top: 0,
