@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client';
 import InvoicePreview from './components/InvoicePreview';
 import {
   getNextOrderId, getNextInvoiceNumber, incrementCounters,
-  saveInvoice, getInvoices, searchInvoices, formatCurrency,
+  saveInvoice, getInvoices, deleteInvoice, searchInvoices, formatCurrency,
   getSettings, saveSettings
 } from './utils';
 
@@ -295,6 +295,15 @@ function App() {
     });
     setCurrentTab('create');
     showToast('Invoice duplicated — ready for new number');
+  };
+
+  // Delete invoice
+  const handleDeleteInvoice = (id, invoiceNum) => {
+    if (window.confirm(`Are you sure you want to delete invoice ${invoiceNum}?`)) {
+      deleteInvoice(id);
+      loadInvoices();
+      showToast(`Invoice ${invoiceNum} deleted successfully!`, 'success');
+    }
   };
 
   // Search
@@ -678,6 +687,13 @@ function App() {
                               title="Duplicate"
                             >
                               <Copy size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
+                              className="btn-secondary !py-1.5 !px-2.5 text-xs text-rose-400 hover:text-white hover:bg-rose-500 hover:border-rose-500 border-white/10"
+                              title="Delete Invoice"
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </td>

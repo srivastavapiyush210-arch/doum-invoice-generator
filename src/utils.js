@@ -231,6 +231,15 @@ export function getInvoices() {
 }
 
 /**
+ * Deletes an invoice from local storage by id.
+ */
+export function deleteInvoice(id) {
+  const invoices = JSON.parse(localStorage.getItem(INVOICES_KEY) || '[]');
+  const filtered = invoices.filter(inv => inv.id !== id);
+  localStorage.setItem(INVOICES_KEY, JSON.stringify(filtered));
+}
+
+/**
  * Filters invoices by `invoice_number` or `customer_name` (case-insensitive).
  */
 export function searchInvoices(query) {

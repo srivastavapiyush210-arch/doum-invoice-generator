@@ -99,9 +99,9 @@ export default function InvoicePreview({ data, settings, previewRef }) {
       <div style={{
         position: 'absolute',
         left: '173.98mm',
-        top: '17.6mm',
+        top: '18.3mm',
         width: '26.3mm',
-        height: '4.5mm',
+        height: '4.0mm',
         backgroundColor: '#ffffff',
         display: 'flex',
         alignItems: 'center',
