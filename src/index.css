@@ -16,7 +16,7 @@
 /* ===== INVOICE PREVIEW STYLES ===== */
 .invoice-page {
   width: 210mm;
-  height: 296mm;
+  height: 295mm;
   background-color: white;
   position: relative;
   box-sizing: border-box;
@@ -375,7 +375,7 @@
 
   .invoice-page {
     width: 210mm;
-    height: 296mm;
+    height: 295mm;
     margin: 0;
     padding: 0;
     box-shadow: none;
@@ -393,6 +393,8 @@
 body {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 .glass-card {
