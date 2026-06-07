@@ -165,7 +165,8 @@ function App() {
         for (let i = totalPages; i >= 2; i--) {
           pdf.deletePage(i);
         }
-      }).save();
+        pdf.save(opt.filename);
+      });
 
       // Save invoice to history
       const invoiceData = {
@@ -236,7 +237,8 @@ function App() {
         for (let i = totalPages; i >= 2; i--) {
           pdf.deletePage(i);
         }
-      }).save();
+        pdf.save(opt.filename);
+      });
       root.unmount();
       document.body.removeChild(container);
       showToast(`PDF re-downloaded: ${invoice.invoiceNumber}`);
