@@ -346,7 +346,8 @@ export default function InvoicePreview({ data, settings, previewRef }) {
         </div>
       </div>
 
-      {/* Transparent Company Seal Image overlay (perfectly centered on pre-printed seal, bottom address removed) */}
+      {/* Transparent Company Seal Image overlay (Commented out to prevent duplication since it is already pre-printed on the background template image) */}
+      {/* 
       <img
         src="/seal.png"
         alt="Company Seal"
@@ -360,6 +361,7 @@ export default function InvoicePreview({ data, settings, previewRef }) {
           pointerEvents: 'none',
         }}
       />
+      */}
     </div>
   );
 }
