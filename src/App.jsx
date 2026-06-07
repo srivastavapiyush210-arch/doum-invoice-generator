@@ -3,7 +3,8 @@ import {
   FilePlus, History, Plus, Trash2, Download, Copy, Search,
   CheckCircle2, AlertCircle, FileText, TrendingUp, Eye, X, Settings
 } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { createRoot } from 'react-dom/client';
 import InvoicePreview from './components/InvoicePreview';
 import {
@@ -142,31 +143,19 @@ function App() {
         return;
       }
 
-      const opt = {
-        margin: 0,
-        filename: `Invoice-${invoiceNumber}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 3,
-          useCORS: true,
-          letterRendering: true,
-          logging: false,
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait',
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-      };
-
-      await html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = totalPages; i >= 2; i--) {
-          pdf.deletePage(i);
-        }
-        pdf.save(opt.filename);
+      // Render element to canvas and create single-page PDF
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
       });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Invoice-${invoiceNumber}.pdf`);
 
       // Save invoice to history
       const invoiceData = {
@@ -223,22 +212,19 @@ function App() {
         throw new Error('Could not render invoice');
       }
 
-      const opt = {
-        margin: 0,
-        filename: `Invoice-${invoice.invoiceNumber}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3, useCORS: true, letterRendering: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-      };
-
-      await html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = totalPages; i >= 2; i--) {
-          pdf.deletePage(i);
-        }
-        pdf.save(opt.filename);
+      // Render element to canvas and create single-page PDF
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
       });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
       root.unmount();
       document.body.removeChild(container);
       showToast(`PDF re-downloaded: ${invoice.invoiceNumber}`);
