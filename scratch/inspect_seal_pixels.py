@@ -1,15 +1,19 @@
 from PIL import Image
+import os
+import numpy as np
 
-img = Image.open('public/seal.png')
-width, height = img.size
-
-# Let's inspect pixels from the corners (top-left, top-right, bottom-left, bottom-right)
-print("Top-left corner pixels:")
-for y in range(5):
-    row = []
-    for x in range(5):
-        row.append(img.getpixel((x, y)))
-    print(row)
-
-print("\nCenter pixel:")
-print(img.getpixel((width//2, height//2)))
+img_path = r"c:\Users\sriva\OneDrive\Desktop\invoice generator\public\seal.png"
+if os.path.exists(img_path):
+    img = Image.open(img_path).convert("RGBA")
+    arr = np.array(img)
+    
+    # Find all visible pixels (alpha > 50)
+    visible_y, visible_x = np.where(arr[:, :, 3] > 50)
+    
+    print(f"Total image size: {img.size}")
+    print(f"Visible pixels bounds: y=[{np.min(visible_y)}, {np.max(visible_y)}], x=[{np.min(visible_x)}, {np.max(visible_x)}]")
+    
+    # Let's count visible pixels in the top-left area
+    # e.g., y < 100, x < 100
+    top_left_visible = np.sum((arr[:100, :100, 3] > 50))
+    print(f"Visible pixels in top-left 100x100: {top_left_visible}")

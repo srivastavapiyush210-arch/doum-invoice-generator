@@ -1,26 +1,13 @@
-import sys
 import fitz
-
-sys.stdout.reconfigure(encoding='utf-8')
-
-pdf_path = "public/template_invoice2.pdf"
-doc = fitz.open(pdf_path)
+doc = fitz.open(r"c:\Users\sriva\OneDrive\Desktop\invoice generator\public\template_invoice2.pdf")
 page = doc[0]
 
-pt_to_mm = 25.4 / 72.0
-
-# Extract text characters with their exact coordinates
-# Page.get_text("words") returns list of tuples: (x0, y0, x1, y1, "word", block_no, line_no, word_no)
-words = page.get_text("words")
-
-print("=== Words in Block 22 ===")
-for w in words:
-    x0, y0, x1, y1, word, block_no, line_no, word_no = w
-    if block_no == 22:
-        print(f"  Word: '{word}' -> MM: [{x0*pt_to_mm:.2f}, {y0*pt_to_mm:.2f}, {x1*pt_to_mm:.2f}, {y1*pt_to_mm:.2f}]")
-
-print("\n=== Words in Block 23 ===")
-for w in words:
-    x0, y0, x1, y1, word, block_no, line_no, word_no = w
-    if block_no == 23:
-        print(f"  Word: '{word}' -> MM: [{x0*pt_to_mm:.2f}, {y0*pt_to_mm:.2f}, {x1*pt_to_mm:.2f}, {y1*pt_to_mm:.2f}]")
+text_page = page.get_text("dict")
+for block in text_page["blocks"]:
+    if "lines" in block:
+        for line in block["lines"]:
+            for span in line["spans"]:
+                x0, y0, x1, y1 = span["bbox"]
+                text = span["text"]
+                if 50 <= x0 <= 350 and 550 <= y0 <= 700:
+                    print(f"Span: {repr(text)} at ({x0:.2f}, {y0:.2f}, {x1:.2f}, {y1:.2f})")

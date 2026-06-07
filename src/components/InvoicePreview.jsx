@@ -99,7 +99,7 @@ export default function InvoicePreview({ data, settings, previewRef }) {
       <div style={{
         position: 'absolute',
         left: '173.98mm',
-        top: '18.25mm',
+        top: '17.6mm',
         width: '26.3mm',
         height: '4.5mm',
         backgroundColor: '#ffffff',
@@ -176,14 +176,15 @@ export default function InvoicePreview({ data, settings, previewRef }) {
       <div style={{
         position: 'absolute',
         left: '9.8mm',
-        top: '92.0mm',
+        top: '89.0mm',
         width: '190.4mm',
-        minHeight: '64.0mm',
+        minHeight: '67.0mm',
         backgroundColor: '#ffffff',
         boxSizing: 'border-box',
         zIndex: 5,
         paddingLeft: '1.82mm',
         paddingRight: '2.09mm',
+        paddingTop: '3.0mm',
         fontFamily: "'Outfit', sans-serif",
       }}>
         {/* Dynamic Items Table */}
