@@ -1,0 +1,67 @@
+{
+  "invoiceNumber": {
+    "left": 176,
+    "top": 14.5,
+    "width": 25,
+    "height": 4.8
+  },
+  "orderType": {
+    "left": 40,
+    "top": 43.8,
+    "width": 60,
+    "height": 4.5
+  },
+  "orderId": {
+    "left": 40,
+    "top": 50.0,
+    "width": 60,
+    "height": 4.5
+  },
+  "orderDate": {
+    "left": 40,
+    "top": 55.5,
+    "width": 60,
+    "height": 4.5
+  },
+  "invoiceDate": {
+    "left": 40,
+    "top": 62.3,
+    "width": 60,
+    "height": 4.5
+  },
+  "customerNameAddress": {
+    "left": 108,
+    "top": 49.0,
+    "width": 80,
+    "height": 22
+  },
+  "serviceTable": {
+    "left": 11.62,
+    "top": 97.2,
+    "width": 186.49
+  },
+  "subtotal": {
+    "left": 166,
+    "top": 125.2,
+    "width": 32,
+    "height": 5
+  },
+  "total": {
+    "left": 166,
+    "top": 132.2,
+    "width": 32,
+    "height": 5
+  },
+  "amountInWords": {
+    "left": 15,
+    "top": 131.5,
+    "width": 90,
+    "height": 8
+  },
+  "qrCode": {
+    "left": 11.0,
+    "top": 172.5,
+    "width": 34.0,
+    "height": 34.0
+  }
+}
