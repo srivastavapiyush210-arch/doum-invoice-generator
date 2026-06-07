@@ -95,14 +95,25 @@ export default function InvoicePreview({ data, settings, previewRef }) {
       />
 
       {/* 2. OVERLAYS */}
-      {/* Invoice Number */}
+      {/* Cover block to hide pre-printed number under the dashed box */}
+      <div style={{
+        position: 'absolute',
+        left: '173.98mm',
+        top: '18.4mm',
+        width: '25.8mm',
+        height: '3.4mm',
+        backgroundColor: '#ffffff',
+        zIndex: 9,
+      }} />
+
+      {/* Invoice Number Text overlay (transparent background to avoid covering dashed box borders) */}
       <div style={{
         position: 'absolute',
         left: '173.98mm',
         top: '16.6mm',
-        width: '26.3mm',
+        width: '25.8mm',
         height: '5.4mm',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'transparent',
         textAlign: 'center',
         lineHeight: '5.4mm',
         fontSize: '8.5px',
