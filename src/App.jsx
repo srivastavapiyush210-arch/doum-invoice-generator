@@ -160,7 +160,12 @@ function App() {
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
       };
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = totalPages; i >= 2; i--) {
+          pdf.deletePage(i);
+        }
+      }).save();
 
       // Save invoice to history
       const invoiceData = {
@@ -226,7 +231,12 @@ function App() {
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
       };
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = totalPages; i >= 2; i--) {
+          pdf.deletePage(i);
+        }
+      }).save();
       root.unmount();
       document.body.removeChild(container);
       showToast(`PDF re-downloaded: ${invoice.invoiceNumber}`);
