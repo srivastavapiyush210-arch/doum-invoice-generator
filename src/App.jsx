@@ -137,10 +137,31 @@ function App() {
 
     setIsGenerating(true);
     try {
-      const element = previewRef.current;
+      // Create a temporary container
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+
+      // Render invoice preview into temp container
+      const root = createRoot(container);
+      const tempData = {
+        ...form,
+        orderId,
+        invoiceNumber,
+      };
+
+      await new Promise((resolve) => {
+        root.render(
+          <InvoicePreview data={tempData} settings={settings} previewRef={null} />
+        );
+        setTimeout(resolve, 500);
+      });
+
+      const element = container.querySelector('.invoice-page');
       if (!element) {
-        showToast('Preview not ready', 'error');
-        return;
+        throw new Error('Could not render invoice');
       }
 
       // Render element to canvas and create single-page PDF
@@ -161,11 +182,15 @@ function App() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      
       // Force remove any extra pages that jsPDF may have auto-created
       while (pdf.internal.getNumberOfPages() > 1) {
         pdf.deletePage(pdf.internal.getNumberOfPages());
       }
       pdf.save(`Invoice-${invoiceNumber}.pdf`);
+
+      root.unmount();
+      document.body.removeChild(container);
 
       // Save invoice to history
       const invoiceData = {
@@ -191,7 +216,7 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [form, orderId, invoiceNumber, subtotal, discountAmount, total]);
+  }, [form, orderId, invoiceNumber, subtotal, discountAmount, total, settings]);
 
   // Re-download from history
   const redownloadPDF = useCallback(async (invoice) => {
