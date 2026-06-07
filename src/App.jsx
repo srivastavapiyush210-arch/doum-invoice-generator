@@ -144,17 +144,27 @@ function App() {
       }
 
       // Render element to canvas and create single-page PDF
+      const elWidth = element.offsetWidth;
+      const elHeight = element.offsetHeight;
       const canvas = await html2canvas(element, {
         scale: 3,
         useCORS: true,
         letterRendering: true,
         logging: false,
+        width: elWidth,
+        height: elHeight,
+        windowWidth: elWidth,
+        windowHeight: elHeight,
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      // Force remove any extra pages that jsPDF may have auto-created
+      while (pdf.internal.getNumberOfPages() > 1) {
+        pdf.deletePage(pdf.internal.getNumberOfPages());
+      }
       pdf.save(`Invoice-${invoiceNumber}.pdf`);
 
       // Save invoice to history
@@ -213,17 +223,27 @@ function App() {
       }
 
       // Render element to canvas and create single-page PDF
+      const elWidth = element.offsetWidth;
+      const elHeight = element.offsetHeight;
       const canvas = await html2canvas(element, {
         scale: 3,
         useCORS: true,
         letterRendering: true,
         logging: false,
+        width: elWidth,
+        height: elHeight,
+        windowWidth: elWidth,
+        windowHeight: elHeight,
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      // Force remove any extra pages that jsPDF may have auto-created
+      while (pdf.internal.getNumberOfPages() > 1) {
+        pdf.deletePage(pdf.internal.getNumberOfPages());
+      }
       pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
       root.unmount();
       document.body.removeChild(container);
