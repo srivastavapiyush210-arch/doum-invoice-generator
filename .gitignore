@@ -25,3 +25,7 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+
+# SQLite Database
+*.sqlite
+server/database.sqlite

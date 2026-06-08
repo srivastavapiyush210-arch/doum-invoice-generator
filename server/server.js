@@ -206,7 +206,9 @@ app.post('/api/invoices', async (req, res) => {
     items,
     discount_percent = 0,
     custom_order_id = '',
-    custom_invoice_number = ''
+    custom_invoice_number = '',
+    order_date = '',
+    bank_choice = 'axis'
   } = req.body;
 
   if (!customer_name || !billing_address || !order_type || !invoice_date || !items || !items.length) {
@@ -236,26 +238,35 @@ app.post('/api/invoices', async (req, res) => {
     let invoiceNumber = custom_invoice_number;
     let incrementCounters = false;
 
+    const orderPrefix = (await query.get("SELECT value FROM settings WHERE key = 'order_prefix'"))?.value || 'OD333819548761';
+    const invoicePrefix = (await query.get("SELECT value FROM settings WHERE key = 'invoice_prefix'"))?.value || 'FBF602500';
+    
+    const nextOrderVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_order_val'"))?.value || '4', 10);
+    const nextInvoiceVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_invoice_val'"))?.value || '4', 10);
+
+    const expectedOrderId = `${orderPrefix}${String(nextOrderVal).padStart(5, '0')}`;
+    const expectedInvoiceNumber = `${invoicePrefix}${String(nextInvoiceVal).padStart(5, '0')}`;
+
     if (!orderId || !invoiceNumber) {
       incrementCounters = true;
-      const orderPrefix = (await query.get("SELECT value FROM settings WHERE key = 'order_prefix'"))?.value || 'OD333819548761';
-      const invoicePrefix = (await query.get("SELECT value FROM settings WHERE key = 'invoice_prefix'"))?.value || 'FBF602500';
-      
-      const nextOrderVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_order_val'"))?.value || '4', 10);
-      const nextInvoiceVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_invoice_val'"))?.value || '4', 10);
-      
       if (!orderId) {
-        orderId = `${orderPrefix}${String(nextOrderVal).padStart(5, '0')}`;
+        orderId = expectedOrderId;
       }
       if (!invoiceNumber) {
-        invoiceNumber = `${invoicePrefix}${String(nextInvoiceVal).padStart(5, '0')}`;
+        invoiceNumber = expectedInvoiceNumber;
+      }
+    } else {
+      // If custom fields are sent, check if they match the expected next counters.
+      // If they do, we should increment the counters in the DB so they stay synced.
+      if (orderId === expectedOrderId || invoiceNumber === expectedInvoiceNumber) {
+        incrementCounters = true;
       }
     }
 
     // 3. Save to database
     const result = await query.run(
-      `INSERT INTO invoices (order_id, invoice_number, customer_name, billing_address, order_type, invoice_date, items, discount_percent, subtotal, discount_amount, total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO invoices (order_id, invoice_number, customer_name, billing_address, order_type, invoice_date, items, discount_percent, subtotal, discount_amount, total, order_date, bank_choice)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         orderId,
         invoiceNumber,
@@ -267,17 +278,19 @@ app.post('/api/invoices', async (req, res) => {
         discPercent,
         subtotal,
         discountAmount,
-        total
+        total,
+        order_date || invoice_date,
+        bank_choice
       ]
     );
 
-    // 4. Increment counters in DB if we used the auto-generated ones
+    // 4. Increment counters in DB if needed
     if (incrementCounters) {
-      const nextOrderVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_order_val'"))?.value || '4', 10);
-      const nextInvoiceVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_invoice_val'"))?.value || '4', 10);
+      const currentOrderVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_order_val'"))?.value || '4', 10);
+      const currentInvoiceVal = parseInt((await query.get("SELECT value FROM settings WHERE key = 'next_invoice_val'"))?.value || '4', 10);
       
-      await query.run("UPDATE settings SET value = ? WHERE key = 'next_order_val'", [String(nextOrderVal + 1)]);
-      await query.run("UPDATE settings SET value = ? WHERE key = 'next_invoice_val'", [String(nextInvoiceVal + 1)]);
+      await query.run("UPDATE settings SET value = ? WHERE key = 'next_order_val'", [String(currentOrderVal + 1)]);
+      await query.run("UPDATE settings SET value = ? WHERE key = 'next_invoice_val'", [String(currentInvoiceVal + 1)]);
     }
 
     const newInvoice = {
@@ -292,10 +305,26 @@ app.post('/api/invoices', async (req, res) => {
       discount_percent: discPercent,
       subtotal,
       discount_amount: discountAmount,
-      total
+      total,
+      order_date: order_date || invoice_date,
+      bank_choice: bank_choice
     };
 
     res.status(201).json(newInvoice);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE an invoice by id
+app.delete('/api/invoices/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await query.run('DELETE FROM invoices WHERE id = ?', [id]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Invoice not found.' });
+    }
+    res.json({ success: true, message: 'Invoice deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

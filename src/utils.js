@@ -115,10 +115,9 @@ export function formatCurrency(val) {
 
 // ── Settings Configuration and Persistence ───────────────────────────────────
 
-const ORDER_COUNTER_KEY = 'doum_order_counter';
-const INVOICE_COUNTER_KEY = 'doum_invoice_counter';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS = {
   companyName: 'DOUM TECHNOLOGIES & INNOVATIONS PRIVATE LIMITED',
   companyAddress: '32, CHOWRINGHEE ROAD, OM TOWER, 7TH FLOOR, UNIT NO- 706, PARK STREET KOLKATA-700071',
   companyCin: 'U63122WB2025PTC279262',
@@ -140,117 +139,200 @@ const DEFAULT_SETTINGS = {
   bankSbiBranch: 'BANKURA TOWN BRANCH',
 };
 
+const KEY_MAPPING = {
+  companyName: 'company_name',
+  companyAddress: 'company_address',
+  companyCin: 'company_cin',
+  companyPhone: 'company_phone',
+  companyEmail: 'company_email',
+  companyWebsite: 'company_website',
+  orderPrefix: 'order_prefix',
+  invoicePrefix: 'invoice_prefix',
+  upiId: 'upi_id',
+  bankAxisName: 'bank_payee_name',
+  bankAxisAccNo: 'bank_acc_no',
+  bankAxisIfsc: 'bank_ifsc',
+  bankAxisBank: 'bank_name',
+  bankAxisBranch: 'bank_branch',
+  bankSbiName: 'bank_sbi_name',
+  bankSbiAccNo: 'bank_sbi_acc_no',
+  bankSbiIfsc: 'bank_sbi_ifsc',
+  bankSbiBank: 'bank_sbi_bank',
+  bankSbiBranch: 'bank_sbi_branch',
+};
+
+// Map DB settings keys (snake_case) to Frontend keys (camelCase)
+export function mapDbSettingsToFrontend(dbSettings) {
+  const frontendSettings = { ...DEFAULT_SETTINGS };
+  Object.entries(KEY_MAPPING).forEach(([feKey, dbKey]) => {
+    if (dbSettings[dbKey] !== undefined && dbSettings[dbKey] !== null) {
+      frontendSettings[feKey] = dbSettings[dbKey];
+    }
+  });
+  return frontendSettings;
+}
+
+// Map Frontend settings keys (camelCase) to DB keys (snake_case)
+export function mapFrontendSettingsToDb(frontendSettings) {
+  const dbSettings = {};
+  Object.entries(KEY_MAPPING).forEach(([feKey, dbKey]) => {
+    if (frontendSettings[feKey] !== undefined) {
+      dbSettings[dbKey] = String(frontendSettings[feKey]);
+    }
+  });
+  dbSettings['upi_confirmed'] = frontendSettings.upiId ? 'true' : 'false';
+  return dbSettings;
+}
+
+// Map DB invoice (snake_case) to Frontend invoice (camelCase)
+export function mapDbInvoiceToFrontend(dbInv) {
+  return {
+    id: dbInv.id,
+    orderId: dbInv.order_id,
+    invoiceNumber: dbInv.invoice_number,
+    customerName: dbInv.customer_name,
+    billingAddress: dbInv.billing_address,
+    orderType: dbInv.order_type,
+    orderDate: dbInv.order_date || dbInv.invoice_date,
+    invoiceDate: dbInv.invoice_date,
+    discountPercent: dbInv.discount_percent || 0,
+    bankChoice: dbInv.bank_choice || 'axis',
+    subtotal: dbInv.subtotal,
+    discountAmount: dbInv.discount_amount,
+    total: dbInv.total,
+    createdAt: dbInv.created_at,
+    items: (dbInv.items || []).map(item => ({
+      itemName: item.item_name || item.itemName || '',
+      quantity: item.quantity || 0,
+      pricePerUnit: item.price_per_unit || item.pricePerUnit || 0
+    }))
+  };
+}
+
+// Map Frontend invoice (camelCase) to DB invoice (snake_case)
+export function mapFrontendInvoiceToDb(feInv) {
+  return {
+    customer_name: feInv.customerName,
+    billing_address: feInv.billingAddress,
+    order_type: feInv.orderType,
+    order_date: feInv.orderDate || feInv.invoiceDate,
+    invoice_date: feInv.invoiceDate,
+    discount_percent: feInv.discountPercent || 0,
+    bank_choice: feInv.bankChoice || 'axis',
+    custom_order_id: feInv.orderId,
+    custom_invoice_number: feInv.invoiceNumber,
+    items: (feInv.items || []).map(item => ({
+      item_name: item.itemName,
+      quantity: item.quantity,
+      price_per_unit: item.pricePerUnit
+    }))
+  };
+}
+
 /**
- * Returns currently saved settings or the default values.
+ * Returns currently saved settings from the backend SQLite DB.
  */
-export function getSettings() {
-  const stored = localStorage.getItem('doum_settings');
-  if (!stored) return DEFAULT_SETTINGS;
+export async function getSettings() {
   try {
-    const parsed = JSON.parse(stored);
-    let updated = false;
-    if (parsed.orderPrefix === 'OD333819548761') {
-      parsed.orderPrefix = 'OD3338195487615';
-      updated = true;
-    }
-    if (parsed.invoicePrefix === 'FBF6025000') {
-      parsed.invoicePrefix = 'FBF60250002';
-      updated = true;
-    }
-    if (updated) {
-      localStorage.setItem('doum_settings', JSON.stringify(parsed));
-    }
-    return { ...DEFAULT_SETTINGS, ...parsed };
-  } catch {
+    const res = await fetch(`${API_BASE_URL}/api/settings`);
+    if (!res.ok) throw new Error('Failed to fetch settings from server');
+    const dbSettings = await res.json();
+    return mapDbSettingsToFrontend(dbSettings);
+  } catch (err) {
+    console.error('Error fetching settings, using defaults:', err);
     return DEFAULT_SETTINGS;
   }
 }
 
 /**
- * Persists the given settings object to localStorage.
+ * Persists the given settings object to the backend SQLite DB.
  */
-export function saveSettings(settings) {
-  localStorage.setItem('doum_settings', JSON.stringify(settings));
-}
-
-// ── Order / Invoice ID Helpers ────────────────────────────────────────────────
-
-/**
- * Returns the next Order ID without incrementing the counter.
- * Format: [Prefix][5-digit padded counter]
- */
-export function getNextOrderId() {
-  const settings = getSettings();
-  const counter = parseInt(localStorage.getItem(ORDER_COUNTER_KEY), 10) || 4;
-  return `${settings.orderPrefix}${String(counter).padStart(5, '0')}`;
-}
-
-/**
- * Returns the next Invoice Number without incrementing the counter.
- * Format: [Prefix][5-digit padded counter]
- */
-export function getNextInvoiceNumber() {
-  const settings = getSettings();
-  const counter = parseInt(localStorage.getItem(INVOICE_COUNTER_KEY), 10) || 4;
-  return `${settings.invoicePrefix}${String(counter).padStart(5, '0')}`;
-}
-
-/**
- * Increments both order and invoice counters in localStorage.
- */
-export function incrementCounters() {
-  const orderCounter =
-    (parseInt(localStorage.getItem(ORDER_COUNTER_KEY), 10) || 4) + 1;
-  const invoiceCounter =
-    (parseInt(localStorage.getItem(INVOICE_COUNTER_KEY), 10) || 4) + 1;
-
-  localStorage.setItem(ORDER_COUNTER_KEY, String(orderCounter));
-  localStorage.setItem(INVOICE_COUNTER_KEY, String(invoiceCounter));
-}
-
-// ── Invoice Persistence ───────────────────────────────────────────────────────
-
-const INVOICES_KEY = 'doum_invoices';
-
-/**
- * Saves an invoice object to the localStorage array `doum_invoices`.
- * Appends to the existing array.
- */
-export function saveInvoice(invoiceData) {
-  const invoices = JSON.parse(localStorage.getItem(INVOICES_KEY) || '[]');
-  invoices.push(invoiceData);
-  localStorage.setItem(INVOICES_KEY, JSON.stringify(invoices));
-}
-
-/**
- * Returns all saved invoices sorted by `id` descending.
- */
-export function getInvoices() {
-  const invoices = JSON.parse(localStorage.getItem(INVOICES_KEY) || '[]');
-  return invoices.sort((a, b) => b.id - a.id);
-}
-
-/**
- * Deletes an invoice from local storage by id.
- */
-export function deleteInvoice(id) {
-  const invoices = JSON.parse(localStorage.getItem(INVOICES_KEY) || '[]');
-  const filtered = invoices.filter(inv => inv.id !== id);
-  localStorage.setItem(INVOICES_KEY, JSON.stringify(filtered));
-}
-
-/**
- * Filters invoices by `invoice_number` or `customer_name` (case-insensitive).
- */
-export function searchInvoices(query) {
-  if (!query) return getInvoices();
-
-  const q = query.toLowerCase();
-  return getInvoices().filter((inv) => {
-    const invoiceNum = (inv.invoiceNumber || '').toLowerCase();
-    const customerName = (inv.customerName || '').toLowerCase();
-    return invoiceNum.includes(q) || customerName.includes(q);
+export async function saveSettings(settings) {
+  const dbSettings = mapFrontendSettingsToDb(settings);
+  const res = await fetch(`${API_BASE_URL}/api/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dbSettings),
   });
+  if (!res.ok) {
+    throw new Error('Failed to save settings to server');
+  }
+  return res.json();
+}
+
+/**
+ * Returns the next Order ID and Invoice Number from the backend database.
+ */
+export async function fetchCounters() {
+  const res = await fetch(`${API_BASE_URL}/api/counters`);
+  if (!res.ok) throw new Error('Failed to fetch counters');
+  const data = await res.json();
+  return {
+    orderId: data.order_id,
+    invoiceNumber: data.invoice_number,
+    nextOrderVal: data.next_order_val,
+    nextInvoiceVal: data.next_invoice_val,
+  };
+}
+
+/**
+ * Saves an invoice object to the backend SQLite database.
+ */
+export async function saveInvoice(invoiceData) {
+  const dbInvoice = mapFrontendInvoiceToDb(invoiceData);
+  const res = await fetch(`${API_BASE_URL}/api/invoices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dbInvoice),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to save invoice to server');
+  }
+  const savedDbInvoice = await res.json();
+  return mapDbInvoiceToFrontend(savedDbInvoice);
+}
+
+/**
+ * Returns all saved invoices from SQLite database, sorted by id descending.
+ */
+export async function getInvoices() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/invoices`);
+    if (!res.ok) throw new Error('Failed to fetch invoices');
+    const dbInvoices = await res.json();
+    return dbInvoices.map(mapDbInvoiceToFrontend);
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+    return [];
+  }
+}
+
+/**
+ * Deletes an invoice from SQLite database by id.
+ */
+export async function deleteInvoice(id) {
+  const res = await fetch(`${API_BASE_URL}/api/invoices/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    throw new Error('Failed to delete invoice');
+  }
+  return res.json();
+}
+
+/**
+ * Filters invoices by invoice_number or customer_name (case insensitive).
+ */
+export async function searchInvoices(query) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/invoices?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('Failed to search invoices');
+    const dbInvoices = await res.json();
+    return dbInvoices.map(mapDbInvoiceToFrontend);
+  } catch (err) {
+    console.error('Error searching invoices:', err);
+    return [];
+  }
 }
 
 // ── UPI Payment String ────────────────────────────────────────────────────────
@@ -258,8 +340,8 @@ export function searchInvoices(query) {
 /**
  * Generates a UPI payment URI for the given amount.
  */
-export function generateUPIString(amount) {
-  const settings = getSettings();
-  const encodedName = encodeURIComponent(settings.companyName);
-  return `upi://pay?pa=${settings.upiId}&pn=${encodedName}&am=${amount}&cu=INR`;
+export function generateUPIString(amount, settings) {
+  const activeSettings = settings || DEFAULT_SETTINGS;
+  const encodedName = encodeURIComponent(activeSettings.companyName);
+  return `upi://pay?pa=${activeSettings.upiId}&pn=${encodedName}&am=${amount}&cu=INR`;
 }

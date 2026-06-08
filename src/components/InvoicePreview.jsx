@@ -1,11 +1,11 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { formatCurrency, numberToWords, generateUPIString, getSettings } from '../utils';
+import { formatCurrency, numberToWords, generateUPIString, DEFAULT_SETTINGS } from '../utils';
 
 export default function InvoicePreview({ data, settings, previewRef }) {
   if (!data) return null;
 
-  const activeSettings = settings || getSettings();
+  const activeSettings = settings || DEFAULT_SETTINGS;
 
   const {
     customerName,

@@ -8,9 +8,8 @@ import { jsPDF } from 'jspdf';
 import { createRoot } from 'react-dom/client';
 import InvoicePreview from './components/InvoicePreview';
 import {
-  getNextOrderId, getNextInvoiceNumber, incrementCounters,
   saveInvoice, getInvoices, deleteInvoice, searchInvoices, formatCurrency,
-  getSettings, saveSettings
+  getSettings, saveSettings, fetchCounters, DEFAULT_SETTINGS
 } from './utils';
 
 function App() {
@@ -22,8 +21,8 @@ function App() {
   const previewRef = useRef(null);
 
   // Settings State
-  const [settings, setSettings] = useState(getSettings());
-  const [settingsForm, setSettingsForm] = useState(getSettings());
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settingsForm, setSettingsForm] = useState(DEFAULT_SETTINGS);
 
   // Form state
   const [form, setForm] = useState({
@@ -41,18 +40,53 @@ function App() {
   const [orderId, setOrderId] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
 
+  // Initial load
   useEffect(() => {
-    refreshCounters();
-    loadInvoices();
+    async function init() {
+      await refreshCounters();
+      await loadInvoices();
+      try {
+        const s = await getSettings();
+        setSettings(s);
+        setSettingsForm(s);
+      } catch (err) {
+        console.error('Failed to load settings on mount:', err);
+      }
+    }
+    init();
   }, []);
 
-  const refreshCounters = () => {
-    setOrderId(getNextOrderId());
-    setInvoiceNumber(getNextInvoiceNumber());
+  // Debounced search logic for backend invoices query
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const results = await searchInvoices(searchQuery);
+        setInvoices(results);
+      } catch (err) {
+        console.error('Error searching invoices:', err);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const refreshCounters = async () => {
+    try {
+      const counters = await fetchCounters();
+      setOrderId(counters.orderId);
+      setInvoiceNumber(counters.invoiceNumber);
+    } catch (err) {
+      console.error('Failed to refresh counters:', err);
+    }
   };
 
-  const loadInvoices = () => {
-    setInvoices(getInvoices());
+  const loadInvoices = async () => {
+    try {
+      const invs = await getInvoices();
+      setInvoices(invs);
+    } catch (err) {
+      console.error('Failed to load invoices:', err);
+    }
   };
 
   const showToast = (message, type = 'success') => {
@@ -60,19 +94,28 @@ function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const loadSettingsTab = () => {
-    const s = getSettings();
-    setSettings(s);
-    setSettingsForm(s);
+  const loadSettingsTab = async () => {
+    try {
+      const s = await getSettings();
+      setSettings(s);
+      setSettingsForm(s);
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
     setCurrentTab('settings');
   };
 
-  const handleSaveSettings = (e) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
-    saveSettings(settingsForm);
-    setSettings(settingsForm);
-    refreshCounters();
-    showToast('Settings saved successfully!');
+    try {
+      await saveSettings(settingsForm);
+      setSettings(settingsForm);
+      await refreshCounters();
+      showToast('Settings saved successfully!');
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      showToast('Failed to save settings: ' + err.message, 'error');
+    }
   };
 
   // Form handlers
@@ -194,19 +237,16 @@ function App() {
 
       // Save invoice to history
       const invoiceData = {
-        id: Date.now(),
         ...form,
         orderId,
         invoiceNumber,
         subtotal,
         discountAmount,
         total,
-        createdAt: new Date().toISOString(),
       };
-      saveInvoice(invoiceData);
-      incrementCounters();
-      refreshCounters();
-      loadInvoices();
+      await saveInvoice(invoiceData);
+      await refreshCounters();
+      await loadInvoices();
       resetForm();
 
       showToast(`Invoice ${invoiceNumber} generated successfully!`);
@@ -298,16 +338,21 @@ function App() {
   };
 
   // Delete invoice
-  const handleDeleteInvoice = (id, invoiceNum) => {
+  const handleDeleteInvoice = async (id, invoiceNum) => {
     if (window.confirm(`Are you sure you want to delete invoice ${invoiceNum}?`)) {
-      deleteInvoice(id);
-      loadInvoices();
-      showToast(`Invoice ${invoiceNum} deleted successfully!`, 'success');
+      try {
+        await deleteInvoice(id);
+        await loadInvoices();
+        showToast(`Invoice ${invoiceNum} deleted successfully!`, 'success');
+      } catch (err) {
+        console.error('Failed to delete invoice:', err);
+        showToast('Failed to delete invoice: ' + err.message, 'error');
+      }
     }
   };
 
-  // Search
-  const filteredInvoices = searchQuery ? searchInvoices(searchQuery) : invoices;
+  // Search results are loaded asynchronously into the invoices state
+  const filteredInvoices = invoices;
 
   // Stats
   const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);

@@ -76,6 +76,21 @@ async function initializeDatabase() {
 
     console.log('Database tables verified/created successfully.');
 
+    // Migration: Add missing columns if they do not exist
+    try {
+      await query.run('ALTER TABLE invoices ADD COLUMN order_date TEXT');
+      console.log('Migrated: Added order_date column to invoices.');
+    } catch (err) {
+      // Ignore if column already exists
+    }
+
+    try {
+      await query.run("ALTER TABLE invoices ADD COLUMN bank_choice TEXT DEFAULT 'axis'");
+      console.log('Migrated: Added bank_choice column to invoices.');
+    } catch (err) {
+      // Ignore if column already exists
+    }
+
     // 3. Seed default settings if empty
     const rowCount = await query.get('SELECT COUNT(*) as count FROM settings');
     if (rowCount.count === 0) {
