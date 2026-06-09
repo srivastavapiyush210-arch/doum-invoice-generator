@@ -850,6 +850,28 @@ function App() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-3 gap-4 mt-4 border-t border-white/5 pt-4">
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium mb-1.5 block">Next Order Counter</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      min="1"
+                      value={settingsForm.nextOrderVal || ''}
+                      onChange={e => setSettingsForm({ ...settingsForm, nextOrderVal: parseInt(e.target.value, 10) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium mb-1.5 block">Next Invoice Counter</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      min="1"
+                      value={settingsForm.nextInvoiceVal || ''}
+                      onChange={e => setSettingsForm({ ...settingsForm, nextInvoiceVal: parseInt(e.target.value, 10) || 0 })}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Axis Bank Details */}
