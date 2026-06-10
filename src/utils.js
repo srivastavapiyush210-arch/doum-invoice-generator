@@ -234,7 +234,7 @@ export function mapFrontendInvoiceToDb(feInv) {
 }
 
 /**
- * Returns currently saved settings from the backend SQLite DB.
+ * Returns currently saved settings from the backend SQLite DB, falling back to localStorage.
  */
 export async function getSettings() {
   try {
@@ -243,61 +243,109 @@ export async function getSettings() {
     const dbSettings = await res.json();
     return mapDbSettingsToFrontend(dbSettings);
   } catch (err) {
-    console.error('Error fetching settings, using defaults:', err);
-    return DEFAULT_SETTINGS;
+    console.warn('Backend settings unreachable. Falling back to localStorage.', err);
+    const stored = localStorage.getItem('doum_settings');
+    if (!stored) return DEFAULT_SETTINGS;
+    try {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
   }
 }
 
 /**
- * Persists the given settings object to the backend SQLite DB.
+ * Persists the given settings object to the backend SQLite DB, falling back to localStorage.
  */
 export async function saveSettings(settings) {
-  const dbSettings = mapFrontendSettingsToDb(settings);
-  const res = await fetch(`${API_BASE_URL}/api/settings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dbSettings),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to save settings to server');
+  try {
+    const dbSettings = mapFrontendSettingsToDb(settings);
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dbSettings),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to save settings to server');
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('Backend saveSettings unreachable. Saving to localStorage.', err);
+    localStorage.setItem('doum_settings', JSON.stringify(settings));
+    return { success: true };
   }
-  return res.json();
 }
 
 /**
- * Returns the next Order ID and Invoice Number from the backend database.
+ * Returns the next Order ID and Invoice Number from the backend database, falling back to localStorage.
  */
 export async function fetchCounters() {
-  const res = await fetch(`${API_BASE_URL}/api/counters`);
-  if (!res.ok) throw new Error('Failed to fetch counters');
-  const data = await res.json();
-  return {
-    orderId: data.order_id,
-    invoiceNumber: data.invoice_number,
-    nextOrderVal: data.next_order_val,
-    nextInvoiceVal: data.next_invoice_val,
-  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/counters`);
+    if (!res.ok) throw new Error('Failed to fetch counters');
+    const data = await res.json();
+    return {
+      orderId: data.order_id,
+      invoiceNumber: data.invoice_number,
+      nextOrderVal: data.next_order_val,
+      nextInvoiceVal: data.next_invoice_val,
+    };
+  } catch (err) {
+    console.warn('Backend fetchCounters unreachable. Using localStorage counters.', err);
+    const settings = await getSettings();
+    const orderCounter = parseInt(localStorage.getItem('doum_order_counter'), 10) || 4;
+    const invoiceCounter = parseInt(localStorage.getItem('doum_invoice_counter'), 10) || 4;
+    return {
+      orderId: `${settings.orderPrefix}${String(orderCounter).padStart(5, '0')}`,
+      invoiceNumber: `${settings.invoicePrefix}${String(invoiceCounter).padStart(5, '0')}`,
+      nextOrderVal: orderCounter,
+      nextInvoiceVal: invoiceCounter,
+    };
+  }
 }
 
 /**
- * Saves an invoice object to the backend SQLite database.
+ * Saves an invoice object to the backend SQLite database, falling back to localStorage.
  */
 export async function saveInvoice(invoiceData) {
-  const dbInvoice = mapFrontendInvoiceToDb(invoiceData);
-  const res = await fetch(`${API_BASE_URL}/api/invoices`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dbInvoice),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to save invoice to server');
+  try {
+    const dbInvoice = mapFrontendInvoiceToDb(invoiceData);
+    const res = await fetch(`${API_BASE_URL}/api/invoices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dbInvoice),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to save invoice to server');
+    }
+    const savedDbInvoice = await res.json();
+    return mapDbInvoiceToFrontend(savedDbInvoice);
+  } catch (err) {
+    console.warn('Backend saveInvoice unreachable. Saving to localStorage.', err);
+    
+    // Save to localStorage
+    const invoices = JSON.parse(localStorage.getItem('doum_invoices') || '[]');
+    const newInvoice = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      ...invoiceData
+    };
+    invoices.push(newInvoice);
+    localStorage.setItem('doum_invoices', JSON.stringify(invoices));
+    
+    // Increment local counters
+    const settings = await getSettings();
+    const orderCounter = (parseInt(localStorage.getItem('doum_order_counter'), 10) || settings.nextOrderVal || 4) + 1;
+    const invoiceCounter = (parseInt(localStorage.getItem('doum_invoice_counter'), 10) || settings.nextInvoiceVal || 4) + 1;
+    localStorage.setItem('doum_order_counter', String(orderCounter));
+    localStorage.setItem('doum_invoice_counter', String(invoiceCounter));
+    
+    return newInvoice;
   }
-  const savedDbInvoice = await res.json();
-  return mapDbInvoiceToFrontend(savedDbInvoice);
 }
 
 /**
- * Returns all saved invoices from SQLite database, sorted by id descending.
+ * Returns all saved invoices from SQLite database, falling back to localStorage.
  */
 export async function getInvoices() {
   try {
@@ -306,26 +354,35 @@ export async function getInvoices() {
     const dbInvoices = await res.json();
     return dbInvoices.map(mapDbInvoiceToFrontend);
   } catch (err) {
-    console.error('Error fetching invoices:', err);
-    return [];
+    console.warn('Backend getInvoices unreachable. Loading from localStorage.', err);
+    const invoices = JSON.parse(localStorage.getItem('doum_invoices') || '[]');
+    return invoices.sort((a, b) => b.id - a.id);
   }
 }
 
 /**
- * Deletes an invoice from SQLite database by id.
+ * Deletes an invoice from SQLite database by id, falling back to localStorage.
  */
 export async function deleteInvoice(id) {
-  const res = await fetch(`${API_BASE_URL}/api/invoices/${id}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    throw new Error('Failed to delete invoice');
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/invoices/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error('Failed to delete invoice');
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('Backend deleteInvoice unreachable. Deleting from localStorage.', err);
+    const invoices = JSON.parse(localStorage.getItem('doum_invoices') || '[]');
+    const filtered = invoices.filter(inv => inv.id !== id);
+    localStorage.setItem('doum_invoices', JSON.stringify(filtered));
+    return { success: true };
   }
-  return res.json();
 }
 
 /**
- * Filters invoices by invoice_number or customer_name (case insensitive).
+ * Filters invoices by invoice_number or customer_name, falling back to localStorage.
  */
 export async function searchInvoices(query) {
   try {
@@ -334,8 +391,17 @@ export async function searchInvoices(query) {
     const dbInvoices = await res.json();
     return dbInvoices.map(mapDbInvoiceToFrontend);
   } catch (err) {
-    console.error('Error searching invoices:', err);
-    return [];
+    console.warn('Backend searchInvoices unreachable. Searching from localStorage.', err);
+    if (!query) return getInvoices();
+    const q = query.toLowerCase();
+    const invoices = JSON.parse(localStorage.getItem('doum_invoices') || '[]');
+    return invoices
+      .filter(inv => {
+        const invoiceNum = (inv.invoiceNumber || '').toLowerCase();
+        const customerName = (inv.customerName || '').toLowerCase();
+        return invoiceNum.includes(q) || customerName.includes(q);
+      })
+      .sort((a, b) => b.id - a.id);
   }
 }
 
